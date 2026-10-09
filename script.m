@@ -1,20 +1,46 @@
-% Example-01: A Simple Ordinary Petri Net 
-% the main simulation file (MSF) to run simulation 
+clear all;
+clc;
 
-clear all; clc; 
 global global_info
-global_info.STOP_AT = 50;   % stop at time = 50 TU
 
+global_info.STOP_AT = 50;  % Stop simulation at time = 50 TU
+
+% Define the Petri net
 pns = pnstruct('pn_pdf');
 
+% Initial marking
+% Start with one token at the development transition's output queue
 dyn.m0 = {};
-dyn.ft = {
-    'tDev1',  'normrnd(1, 0.5)', ...
-    'tDev2',  'normrnd(1, 0.5)', ...
-    'tBuild', 1  ...
-};  % firing time
-pni = initialdynamics(pns, dyn); 
 
-Sim_Results = gpensim(pni); % perform simulation runs
-prnss(Sim_Results);  % print the simulation results 
-plotp(Sim_Results, {'pBuildQueue', 'pDeploy'}); % plot the results
+% Firing times
+dyn.ft = {
+    'tDev',             2, ...
+    'tStaticAnalysis',  3, ...
+    'tBuild',           5, ...
+    'tUnitTest',        3, ...
+    'tSecurityScan',    7, ...
+    'tE2ETest',        10, ...
+    'tCheckTests',      1 ...
+};
+
+% Initialize the Petri net
+pni = initialdynamics(pns, dyn);
+
+% Run simulation
+Sim_Results = gpensim(pni);
+
+% Print simulation results
+prnss(Sim_Results);
+
+% Plot the number of tokens in each place
+plotp(Sim_Results, {
+    'pSAQueue', ...
+    'pBuildQueue', ...
+    'pUnitTestQueue', ...
+    'pSecurityScanQueue', ...
+    'pE2ETestQueue', ...
+    'pUnitTestResults', ...
+    'pSecurityScanResults', ...
+    'pE2ETestResults', ...
+    'pDeploy'
+});
