@@ -1,58 +1,60 @@
-clear all;
-clc;
-
+% Main simulation file (MSF) - CI/CD pipeline, sequential version
+% Time unit (TU) = 1 minute of simulated time.
+clear all; clc;
 global global_info
 
-global_info.STOP_AT = 50;  % Stop simulation at time = 50 TU
+%% Scenario parameters (baseline)
+commitInterval = 30;     % time between two commits [min]
+nRunners       = 2;      % runners available (used by PRE/POST files)
+
+%% Simulation parameters
+global_info.STOP_AT = 1440;   % simulate 24 h
 global_info.COMMIT_COUNT = 0;
 
-% Define the Petri net
-% The function in your provided definition file is simple_pn_pdf()
+%% Petri net definition
 pns = pnstruct('pn_pdf');
 
-% Initial marking
+%% Initial marking (empty: tDev is a source transition)
 dyn.m0 = {};
 
-% Firing times (time units)
+%% Firing times (stage durations)
 dyn.ft = {
-    'tDev',             2, ...
-    'tStaticAnalysis',  3, ...
-    'tBuild',           5, ...
-    'tUnitTest',        3, ...
-    'tSecurityScan',    7, ...
-    'tE2ETest',        10, ...
-    'tCheckTests',      1 ...
+    'tDev',              commitInterval, ...
+    'tBuild',            15, ...
+    'tUnitTest',         25, ...
+    'tSecurityScan',     15, ...
+    'tIntegrationTest',  35, ...
+    'tDeployStaging',    10, ...
+    'tPerformanceTest',  15, ...
+    'tDeployProd',        5 ...
     };
 
-% Declare a shared pool of 2 runners
-% Format: resource name, number of instances, availability
-dyn.re = {'runners', 1, inf};
+%% Resources: shared pool of runners
+% Format: name, number of instances, number of uses (inf = unlimited)
+% NOTE: the pool is only enforced if the PRE files call requestSR({'runners',1})
+% and the POST files call release().
+dyn.re = {'runners', nRunners, inf};
 
-% Initialize the Petri net
+%% Initialize and run
 pni = initialdynamics(pns, dyn);
-
-% Run simulation
 Sim_Results = gpensim(pni);
 
-% Print general simulation results
+%% Results
 disp('===== GENERAL SIMULATION RESULTS =====');
 prnss(Sim_Results);
 
-% Print resource usage schedule
 disp('===== RUNNER RESOURCE USAGE =====');
 prnschedule(Sim_Results);
 
-% Plot the number of tokens in each place
 plotp(Sim_Results, {
-    'pSAQueue', ...
     'pBuildQueue', ...
     'pUnitTestQueue', ...
     'pSecurityScanQueue', ...
-    'pE2ETestQueue', ...
-    'pUnitTestResults', ...
-    'pSecurityScanResults', ...
-    'pE2ETestResults', ...
-    'pDeploy'
-});
+    'pIntegrationQueue', ...
+    'pStagingQueue', ...
+    'pPerformanceQueue', ...
+    'pProductionQueue', ...
+    'pDeployed'
+    });
 
-prnfinalcolors(Sim_Results)
+prnfinalcolors(Sim_Results);
