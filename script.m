@@ -7,13 +7,13 @@ global_info.STOP_AT = 50;  % Stop simulation at time = 50 TU
 global_info.COMMIT_COUNT = 0;
 
 % Define the Petri net
+% The function in your provided definition file is simple_pn_pdf()
 pns = pnstruct('pn_pdf');
 
 % Initial marking
-% Start with one token at the development transition's output queue
 dyn.m0 = {};
 
-% Firing times
+% Firing times (time units)
 dyn.ft = {
     'tDev',             2, ...
     'tStaticAnalysis',  3, ...
@@ -22,7 +22,11 @@ dyn.ft = {
     'tSecurityScan',    7, ...
     'tE2ETest',        10, ...
     'tCheckTests',      1 ...
-};
+    };
+
+% Declare a shared pool of 2 runners
+% Format: resource name, number of instances, availability
+dyn.re = {'runners', 1, inf};
 
 % Initialize the Petri net
 pni = initialdynamics(pns, dyn);
@@ -30,8 +34,13 @@ pni = initialdynamics(pns, dyn);
 % Run simulation
 Sim_Results = gpensim(pni);
 
-% Print simulation results
+% Print general simulation results
+disp('===== GENERAL SIMULATION RESULTS =====');
 prnss(Sim_Results);
+
+% Print resource usage schedule
+disp('===== RUNNER RESOURCE USAGE =====');
+prnschedule(Sim_Results);
 
 % Plot the number of tokens in each place
 plotp(Sim_Results, {
