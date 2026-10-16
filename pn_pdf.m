@@ -1,4 +1,4 @@
-function [pns] = simple_pn_pdf()
+function [pns] = pn_pdf()
 
 pns.PN_name = 'CI/CD pipeline';
 

@@ -4,6 +4,7 @@ clc;
 global global_info
 
 global_info.STOP_AT = 50;  % Stop simulation at time = 50 TU
+global_info.COMMIT_COUNT = 0;
 
 % Define the Petri net
 pns = pnstruct('pn_pdf');
@@ -44,3 +45,5 @@ plotp(Sim_Results, {
     'pE2ETestResults', ...
     'pDeploy'
 });
+
+prnfinalcolors(Sim_Results)
