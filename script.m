@@ -5,7 +5,7 @@ global global_info
 
 %% Scenario parameters (baseline)
 commitInterval = 30;     % time between two commits [min]
-nRunners       = 2;      % runners available (used by PRE/POST files)
+nRunners       = 10;      % runners available (used by PRE/POST files)
 
 %% Simulation parameters
 global_info.STOP_AT = 1440;   % simulate 24 h
