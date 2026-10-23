@@ -1,36 +1,45 @@
 function [fire, transition] = COMMON_PRE(transition)
 
-% By default, no runner is required
-granted = 1;
-
-switch transition.name
-    case {'tUnitTest', 'tSecurityScan', 'tIntegrationTest'}
-
-        % Request one runner from the shared pool
-        granted = requestSR({'runners', 1});
+% ---------- tDev: no runner, just create the commit ----------
+if strcmp(transition.name, 'tDev')
+    % Color = time the commit was started, e.g. 'C360'
+    transition.new_color = ['C', num2str(current_time())];
+    fire = 1;
+    return
 end
 
-switch transition.name
-    case {'tDev'}
-        transition.new_color = ['C', num2str(current_time())];
-    case {'tBuild'}
+% ---------- Every other transition needs one runner ----------
+fire = requestSR({'runners', 1});
+
+% All integration test transitions (tIntegrationTest1, tIntegrationTest2, ...)
+% are treated the same way, so give them one common name here
+name = transition.name;
+if strncmp(name, 'tIntegrationTest', 16)
+    name = 'tIntegrationTest';
+end
+
+% ---------- Take the oldest commit from the input queue (FIFO) ----------
+switch name
+case {'tBuild'}
         [set_of_tokID, ~] = tokenArrivedEarly('pBuildQueue', 1);
         transition.selected_tokens = set_of_tokID;
-    case {'tUnitTest'}
+case {'tUnitTest'}
         [set_of_tokID, ~] = tokenArrivedEarly('pUnitTestQueue', 1);
         transition.selected_tokens = set_of_tokID;
-    case {'tIntegrationTest'}
-        [set_of_tokID, ~] = tokenArrivedEarly('pIntegrationQueue', 1);
-        transition.selected_tokens = set_of_tokID;
-    case {'tSecurityScan'}
+case {'tSecurityScan'}
         [set_of_tokID, ~] = tokenArrivedEarly('pSecurityScanQueue', 1);
         transition.selected_tokens = set_of_tokID;
-    case {'tDeployStaging'}
+case {'tIntegrationTest'}
+        [set_of_tokID, ~] = tokenArrivedEarly('pIntegrationQueue', 1);
+        transition.selected_tokens = set_of_tokID;
+case {'tDeployStaging'}
         [set_of_tokID, ~] = tokenArrivedEarly('pStagingQueue', 1);
         transition.selected_tokens = set_of_tokID;
+case {'tPerformanceTest'}
+        [set_of_tokID, ~] = tokenArrivedEarly('pPerformanceQueue', 1);
+        transition.selected_tokens = set_of_tokID;
+case {'tDeployProd'}
+        [set_of_tokID, ~] = tokenArrivedEarly('pProductionQueue', 1);
+        transition.selected_tokens = set_of_tokID;
 end
-
-% The transition may fire only if the request is granted
-fire = granted;
-
 end

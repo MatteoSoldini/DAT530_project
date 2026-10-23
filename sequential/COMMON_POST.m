@@ -1,26 +1,23 @@
 function [] = COMMON_POST(transition)
+global global_info
 
-global global_info;
-
-switch transition.name
-
-    case {'tUnitTest', 'tSecurityScan', 'tIntegrationTest'}
-
-        % Release the resources held by this transition
-        release(transition.name);
-
-    case {'tDeployProd'}
-        % A commit has just arrived in pDeployed: read its color
-        [tok, ~] = tokenArrivedLate('pDeployed', 1);
-        color = get_color('pDeployed', tok);
-
-        % 'C360' -> 360
-        creationTime = str2double(color{1}(2:end));
-
-        % Time from creation to deployment
-        leadTime = current_time() - creationTime;
-        global_info.LEAD_TIMES(end+1) = leadTime;
-
+% ---------- tDev: no runner to give back ----------
+if strcmp(transition.name, 'tDev')
+    return
 end
 
+% ---------- Every other transition gives its runner back ----------
+release();
+
+% ---------- Lead time: a commit has just arrived in pDeployed ----------
+if strcmp(transition.name, 'tDeployProd')
+    [tok, ~] = tokenArrivedLate('pDeployed', 1);
+    color = get_color('pDeployed', tok);
+
+    % 'C360' -> 360
+    creationTime = str2double(color{1}(2:end));
+
+    leadTime = current_time() - creationTime;
+    global_info.LEAD_TIMES(end+1) = leadTime;
+end
 end
