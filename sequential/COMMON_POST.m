@@ -10,7 +10,7 @@ end
 release();
 
 % ---------- Lead time: a commit has just arrived in pDeployed ----------
-if strcmp(transition.name, 'tDeployProd')
+if strncmp(transition.name, 'tDeployProd', 11)
     [tok, ~] = tokenArrivedLate('pDeployed', 1);
     color = get_color('pDeployed', tok);
 

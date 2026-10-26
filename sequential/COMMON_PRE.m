@@ -1,6 +1,5 @@
 function [fire, transition] = COMMON_PRE(transition)
 
-% ---------- tDev: no runner, just create the commit ----------
 if strcmp(transition.name, 'tDev')
     % Color = time the commit was started, e.g. 'C360'
     transition.new_color = ['C', num2str(current_time())];
@@ -11,18 +10,13 @@ end
 % ---------- Every other transition needs one runner ----------
 fire = requestSR({'runners', 1});
 
-% All integration test transitions (tIntegrationTest1, tIntegrationTest2, ...)
-% are treated the same way, so give them one common name here
-name = transition.name;
-if strncmp(name, 'tIntegrationTest', 16)
-    name = 'tIntegrationTest';
-end
-
 % ---------- Take the oldest commit from the input queue (FIFO) ----------
+name = strtok(transition.name, '_');
 switch name
 case {'tBuild'}
         [set_of_tokID, ~] = tokenArrivedEarly('pBuildQueue', 1);
         transition.selected_tokens = set_of_tokID;
+        transition.new_color = ['C', num2str(current_time())];
 case {'tUnitTest'}
         [set_of_tokID, ~] = tokenArrivedEarly('pUnitTestQueue', 1);
         transition.selected_tokens = set_of_tokID;
