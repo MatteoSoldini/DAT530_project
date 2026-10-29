@@ -5,19 +5,24 @@ close all;
 global global_info
 
 %% Simulation parameters
-global_info.STOP_AT = 1440;   % (minutes) simulate 24 h
-nRunners = 16;                 % runners available
-nRuns    = 10;                % number of simulation runs
+global_info.STOP_AT = 1440;         % (minutes) simulate 24 h
+nRunners = 8;                       % runners available
+nRuns    = 10;                      % number of simulation runs
+global_info.PRIORITY_SCHEDULING = true;
+global_info.SATURATED = false;
+global_info.PARALLEL  = false;
 
 % Arrival mode:
 %   true  = saturated: build queue starts full, no new commits (measures capacity)
 %   false = open: tDev creates a commit every commitInterval minutes
-global_info.SATURATED = true;
 if global_info.SATURATED
     commitInterval = global_info.STOP_AT;   % tDev does practically nothing
     dyn.m0 = {'pBuildQueue', 1000};         % more than the pipeline can process
 else
-    commitInterval = 30;                    % time between two commits [min]
+    perc = 0.25;
+    W = 120;                                % runner-minutes per commit
+    maxThroughput = nRunners / W;           % capacity [commits/min]
+    commitInterval = 1/maxThroughput/perc;  % time between two commits [min]
     dyn.m0 = {};                            % tDev is the only source
 end
 
@@ -34,12 +39,20 @@ durations = {
 'tPerformanceTest', 15;
 'tDeployProd',       5
 };
-dyn.ft = {'tDev', commitInterval};
+
+dyn.ft = {'tDev', sprintf('exprnd(%g)', commitInterval)};
+dyn.ip = {};                                % initial priorities
 for s = 1:size(durations, 1)
     for k = 1:nRunners
         name = [durations{s, 1}, '_', num2str(k)];
         dyn.ft{end+1} = name;
         dyn.ft{end+1} = durations{s, 2};
+
+        % Later stages (lower in the table) get a higher priority
+        if global_info.PRIORITY_SCHEDULING
+            dyn.ip{end+1} = name;
+            dyn.ip{end+1} = s;
+        end
     end
 end
 
@@ -60,8 +73,14 @@ allRU         = zeros(1, nRuns);
 for run = 1:nRuns
     rng(run);                         % different, reproducible seed per run
     global_info.LEAD_TIMES = [];      % reset the metrics of the previous run
+    
 
-    pns = pnstruct('pn_pdf');         % rebuild the net from scratch
+    pdfFile = 'pn_pdf';
+    if global_info.PARALLEL
+        pdfFile = 'par_tests_pn_pdf';
+    end
+
+    pns = pnstruct(pdfFile);         % rebuild the net from scratch
     pni = initialdynamics(pns, dyn);
     Sim_Results = gpensim(pni);
 
@@ -103,14 +122,8 @@ resourceTransitions = {pns.global_transitions.name};
 resourceTransitions(strcmp(resourceTransitions, 'tDev')) = [];
 %occupancy(Sim_Results, resourceTransitions);
 
+places = {pns.global_places.name};
+
 figure;
-plotp(Sim_Results, {
-'pUnitTestQueue', ...
-'pSecurityScanQueue', ...
-'pIntegrationQueue', ...
-'pStagingQueue', ...
-'pPerformanceQueue', ...
-'pProductionQueue', ...
-'pDeployed'
-});
+plotp(Sim_Results, places);
 title('Places (last run)');
