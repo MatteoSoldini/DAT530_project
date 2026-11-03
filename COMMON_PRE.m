@@ -1,9 +1,10 @@
 function [fire, transition] = COMMON_PRE(transition)
 global global_info
 
-% ---------- tDev: no runner, just create the commit ----------
+% ---------- tDev: give the new commit an ID ----------
 if strcmp(transition.name, 'tDev')
-    transition.new_color = ['C', num2str(current_time())];
+    global_info.COMMIT_COUNT = global_info.COMMIT_COUNT + 1;
+    transition.new_color = ['C', num2str(global_info.COMMIT_COUNT)];
     fire = 1;
     return
 end
@@ -17,9 +18,6 @@ name = strtok(transition.name, '_');
 switch name
 case {'tBuild'}
         [tokens, ~] = tokenArrivedEarly('pBuildQueue', 1);
-        if global_info.SATURATED
-            transition.new_color = ['C', num2str(current_time())];
-        end
 case {'tUnitTest'}
         [tokens, ~] = tokenArrivedEarly('pUnitTestQueue', 1);
 case {'tSecurityScan'}
@@ -56,4 +54,20 @@ if ~requestSR({'runners', 1})
 end
 transition.selected_tokens = tokens;
 fire = 1;
+
+% ---------- Build bookkeeping: only now the build really starts ----------
+if strcmp(name, 'tBuild')
+    if global_info.SATURATED
+        % Initial tokens have no color: give them an ID now
+        global_info.COMMIT_COUNT = global_info.COMMIT_COUNT + 1;
+        id = global_info.COMMIT_COUNT;
+        transition.new_color = ['C', num2str(id)];
+        global_info.CREATION_TIME(id) = current_time();
+    else
+        color = get_color('pBuildQueue', tokens(1));
+        id = str2double(color{1}(2:end));          % 'C12' -> 12
+    end
+    global_info.BUILD_START(id)  = current_time();
+    global_info.WAIT_TIMES(end+1) = current_time() - global_info.CREATION_TIME(id);
+end
 end
