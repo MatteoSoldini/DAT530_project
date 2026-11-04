@@ -4,7 +4,7 @@ clear all; clc;
 close all;
 global global_info
 
-%% Don't touch these
+%% Global initializations
 global_info.COMMIT_COUNT   = 0;
 global_info.CREATION_TIME  = [];
 global_info.BUILD_START    = [];
@@ -15,33 +15,39 @@ global_info.PIPELINE_TIMES = [];
 %% Simulation parameters
 global_info.STOP_AT = 1440;         % (minutes) simulate 24 h
 
-nRunners = 8;                       % runners available
+nRunners = 9;                       % runners available
 nRuns    = 10;                      % number of simulation runs
 
 global_info.PRIORITY_SCHEDULING = true;
-
-global_info.SATURATED = false;
-perc = 1.0;
-
 global_info.PARALLEL  = true;
+
+mode = 'RATE';
+mode = validatestring(mode, {'SATURATED', 'LOAD', 'RATE'});   % catches typos
+
+loadFactor  = 0.75;     % used in 'LOAD' mode (1.0 = capacity)
+arrivalRate = 3;        % used in 'RATE' mode [commits/h]
 
 W     = 120;                        % runner-minutes per commit
 T_seq = 120;                        % critical path length sequential pipeline
 T_par = 80;                         % critical path length parallel pipeline
 
-% Arrival mode:
-%   true  = saturated: build queue starts full, no new commits (measures capacity)
-%   false = open: tDev creates a commit every commitInterval minutes
-if global_info.SATURATED
-    commitInterval = global_info.STOP_AT;   % tDev does practically nothing
-    dyn.m0 = {'pBuildQueue', 1000};         % more than the pipeline can process
-else
-    maxThroughput = nRunners / W;           % capacity [commits/min]
-    commitInterval = 1/maxThroughput/perc;  % time between two commits [min]
-    dyn.m0 = {};                            % tDev is the only source
+%% Don't modify these
+
+global_info.SATURATED = strcmp(mode, 'SATURATED');
+
+switch mode
+    case 'SATURATED'
+        commitInterval = global_info.STOP_AT;   % tDev does practically nothing
+        dyn.m0 = {'pBuildQueue', 1000};         % more than the pipeline can process
+    case 'LOAD'
+        maxThroughput  = nRunners / W;          % capacity [commits/min]
+        commitInterval = 1 / (loadFactor * maxThroughput);
+        dyn.m0 = {};
+    case 'RATE'
+        commitInterval = 60 / arrivalRate;      % [min]
+        dyn.m0 = {};
 end
 
-% Don't modify these
 global_info.nRunners = nRunners;            % used by the PDF file
 
 %% Firing times: every copy of a stage gets the stage's duration
@@ -136,6 +142,9 @@ fprintf('Throughput (SS):      %.3f C/h (std %.3f)\n', mean(allThroughput), std(
 fprintf('Pipeline time:        %.1f min (std %.1f)\n', mean(allPipeTime), std(allPipeTime));
 if ~global_info.SATURATED
     fprintf('Lead time:            %.1f min (std %.1f)\n', mean(allLeadTime), std(allLeadTime));
+
+    allWaitTime = allLeadTime - allPipeTime;
+    fprintf('Wait time:            %.1f min (std %.1f)\n', mean(allWaitTime), std(allWaitTime));
 end
 fprintf('Resource Utilization: %.2f %% (std %.2f)\n', mean(allRU), std(allRU));
 
