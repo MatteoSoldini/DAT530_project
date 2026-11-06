@@ -1,5 +1,5 @@
-% Main simulation file (MSF) - CI/CD pipeline, sequential version
-% Time unit (TU) = 1 minute of simulated time.
+% Main simulation file (MSF) - CI/CD pipeline
+% Time unit (TU) = 1 minute of simulated time
 clear all; clc;
 close all;
 global global_info
